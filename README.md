@@ -19,7 +19,7 @@ An Anki add-on that shows the day's due reviews in fixed-size batches (25 cards 
 
 ## Install
 
-**From AnkiWeb:** in Anki, open Tools > Add-ons > Get Add-ons, enter the code `[AnkiWeb code: TO FILL]` and restart Anki. Listing page: [AnkiWeb page: TO FILL].
+**From AnkiWeb:** in Anki, open Tools > Add-ons > Get Add-ons, enter the code `1414284716` and restart Anki. Listing page: https://ankiweb.net/shared/info/1414284716
 
 **From a file:** download `batch_reviews.ankiaddon` from this repository's [Releases](https://github.com/machpath/anki-batch-reviews/releases) page. In Anki, open Tools > Add-ons > Install from file..., choose the file and restart Anki.
 
@@ -103,8 +103,8 @@ Cards in filtered decks are left alone: they are not put into batches and never 
 
 ## FAQ
 
-**My phone (or AnkiWeb) shows the full count.**
-That is expected. Cards are hidden only on this computer, and everything is put back before every sync.
+**Does it work on my phone?**
+No. Add-ons only run in Anki on a computer (Windows, Mac, Linux), not in the phone apps. Your phone, and AnkiWeb, show all of your due cards as usual, because everything is put back before every sync.
 
 **Why do the Browser or the statistics show "buried" cards?**
 During a session, the cards of the other batches are buried. They are put back when you turn batching off, sync or close Anki.
