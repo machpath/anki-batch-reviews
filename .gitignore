@@ -1,0 +1,13 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Written by Anki into an installed add-on folder (local config, enabled state)
+meta.json
+
+# The add-on's per-profile state and log (only the README is part of the source)
+src/batch_reviews/user_files/*
+!src/batch_reviews/user_files/README.txt
+
+# Packages are attached to GitHub Releases, not committed
+*.ankiaddon
