@@ -13,6 +13,7 @@ static self-check, so a missing point means "unavailable", not a silent gap.
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import traceback
 from typing import Any, Callable
@@ -20,8 +21,12 @@ from typing import Any, Callable
 POINTS = ("close", "close_for_full_sync", "sync_collection")
 
 
-def install(get_engine: Callable[[], Any], log: Callable[[str], None]) -> list[tuple[str, Any]]:
-    """Wrap the points. Returns [(name, previous)] for uninstall()."""
+def install(get_engine: Callable[[], Any], log: Callable[[str], None],
+            serial: Callable[[], Any] = contextlib.nullcontext) -> list[tuple[str, Any]]:
+    """Wrap the points. Returns [(name, previous)] for uninstall(). `serial()`
+    gives the add-on's lock as a context manager: the restore (sync_collection
+    runs on a worker thread) never interleaves with a main-thread hide. It is
+    released before the wrapped method runs."""
     from anki.collection import Collection
 
     done = []
@@ -34,13 +39,14 @@ def install(get_engine: Callable[[], Any], log: Callable[[str], None]) -> list[t
             @functools.wraps(prev)
             def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
                 try:
-                    eng = get_engine()
-                    if eng is not None and getattr(eng, "col", None) is self and \
-                            (eng.state.get("hidden") or eng.state.get("pulled")):
-                        n = len(eng.state.get("hidden") or {})
-                        eng.restore_all()
-                        log(f"safety net: put back {n} hidden card(s) before Collection.{name}"
-                            " (the hook that should have done it did not run)")
+                    with serial():
+                        eng = get_engine()
+                        if eng is not None and getattr(eng, "col", None) is self and \
+                                (eng.state.get("hidden") or eng.state.get("pulled")):
+                            n = len(eng.state.get("hidden") or {})
+                            eng.restore_all()
+                            log(f"safety net: put back {n} hidden card(s) before Collection.{name}"
+                                " (the hook that should have done it did not run)")
                 except Exception:
                     log(f"safety net before Collection.{name} failed:\n{traceback.format_exc()}")
                 return prev(self, *args, **kwargs)

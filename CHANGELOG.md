@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+
+- Now also works on Anki 25.07 and 25.09. Requires Anki 25.07 or newer with the v3 scheduler.
+- Fixed a rare case where some cards could stay hidden until the next day if a sync or an update of the add-on ran at the exact moment the batch changed.
+
 ## 1.1.2
 
 First public release.

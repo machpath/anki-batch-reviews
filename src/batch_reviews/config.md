@@ -34,7 +34,7 @@ box, opening another deck in the same tree, or a sync.
 Cards in filtered decks are left alone. A filtered deck inside a batched deck shows
 its own cards as usual, so that deck's Due count can be larger than its batch.
 
-Needs Anki 26.05 or newer with the v3 scheduler.
+Needs Anki 25.07 or newer with the v3 scheduler.
 
 **Log:** if something goes wrong, the add-on switches itself off, puts every card
 back, and writes details to `batch_reviews.log` (Tools > Add-ons > Batch Reviews >

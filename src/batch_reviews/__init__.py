@@ -1,6 +1,6 @@
 """Batch Reviews: study each deck's reviews in fixed batches.
 
-Supported: Anki 26.05 - 26.09.x (v3 scheduler required); later Anki through its self-check. On anything else it checks
+Supported: Anki 25.07 - 26.09.x (v3 scheduler required); later Anki through its self-check. On anything else it checks
 what this Anki provides first and stays off; the only thing it then still does is
 put back cards that an earlier run left hidden (recover.py)."""
 

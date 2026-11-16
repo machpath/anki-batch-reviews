@@ -67,8 +67,8 @@ Tools > Add-ons > select Batch Reviews > Config.
 
 ## Requirements
 
-- Anki 26.05 or newer, with the v3 scheduler (the default in current Anki).
-- Tested on Anki 26.05, 26.08 and 26.09.4, on Windows and Linux. Not tested on macOS.
+- Anki 25.07 or newer, with the v3 scheduler (the default in current Anki).
+- Tested on Anki 25.07, 25.09, 26.05, 26.08 and 26.09.4 on Linux, and on 26.09.4 on Windows. Not tested on macOS.
 - At startup the add-on checks that your Anki behaves the way it expects. If it does not (for example, the v3 scheduler is off, or a newer Anki changed something the add-on needs), the toolbar link reads **Batch: unavailable** and the add-on does nothing. Click the link to see the reason.
 
 ## How it works
@@ -121,7 +121,7 @@ No. It only decides which of today's due reviews are visible right now. Answers 
 **The toolbar says "Batch: restart Anki".**
 The add-on was updated, disabled or removed in Tools > Add-ons, so it paused itself and put every hidden card back. Restart Anki to continue.
 
-**The toolbar says "Batch: unavailable".
+**The toolbar says "Batch: unavailable".**
 The startup check found something in your Anki that the add-on cannot work with. Click the link to see the reason. Nothing is hidden while it is unavailable.
 
 ## Reporting a problem

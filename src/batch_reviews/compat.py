@@ -1,4 +1,4 @@
-"""Everything that differs between Anki versions (supported: 26.05 - 26.09.x;
+"""Everything that differs between Anki versions (supported: 25.07 - 26.09.x;
 older branches are kept as feature detection, not as a support promise),
 resolved once by feature detection: protobuf field/oneof names, optional hooks,
 optional private helpers. The only version-number check is the floor of the
@@ -64,7 +64,7 @@ def states_match(a: Any, b: Any) -> bool:
     return strip(a) == strip(b)
 
 
-CONTEXT_HAS_FSRS = {"decay", "desired_retention"} <= CONTEXT_FIELDS  # 26.05+
+CONTEXT_HAS_FSRS = {"decay", "desired_retention"} <= CONTEXT_FIELDS  # 26.05+ (not in 25.07/25.09)
 
 
 def fsrs_context_values(col: Any, card: Any, source: str) -> dict:
@@ -246,7 +246,7 @@ def _resolve(root: Any, path: str) -> Any:
     return obj
 
 
-MIN_POINT_VERSION = 260500  # Anki 26.05: the oldest supported release (as in manifest.json)
+MIN_POINT_VERSION = 250700  # Anki 25.07: the oldest supported release (as in manifest.json)
 
 
 def anki_point_version() -> int | None:
@@ -274,7 +274,7 @@ def gui_problems(mw: Any) -> tuple[list[str], dict[str, str]]:
     if pv is None or pv < MIN_POINT_VERSION:
         # the manifest already keeps older Anki from loading us; this covers a
         # forced load (a copied folder, an edited manifest)
-        problems.append(f"this Anki ({pv}) is older than the oldest supported release, 26.05")
+        problems.append(f"this Anki ({pv}) is older than the oldest supported release, 25.07")
     for name, expected in REQUIRED_HOOKS.items():
         hook = getattr(gui_hooks, name, None)
         if hook is None:

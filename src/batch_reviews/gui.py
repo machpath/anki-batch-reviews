@@ -76,6 +76,54 @@ def _ui(fn: Callable[[], Any]) -> None:
         _log(f"could not schedule a UI update:\n{traceback.format_exc()}")
 
 
+# One re-entrant lock serialises everything that hides or restores cards: every
+# main-thread entry point holds it for its whole body, and a restore on another
+# thread (an AnkiWeb update's install hook, the safety net on the sync thread)
+# takes it before touching the engine. So a worker's restore never lands in the
+# middle of a main-thread hide (which could leave cards hidden with no ledger
+# entry). Nothing holding it ever waits for another thread, so a worker waits at
+# most for one entry point to finish; the timeout (then go ahead regardless,
+# logged) is a last resort that keeps "every card is back before Anki replaces
+# the folder / syncs" even if the main thread were stuck inside an entry point.
+import threading as _threading
+
+_lock = _threading.RLock()
+LOCK_WAIT_SECONDS = 10.0
+
+
+class _serial:
+    """with _serial(where): hold the lock (or, after LOCK_WAIT_SECONDS, go on without it)."""
+
+    def __init__(self, where: str) -> None:
+        self.where = where
+        self.held = False
+
+    def __enter__(self) -> "_serial":
+        try:
+            self.held = _lock.acquire(timeout=LOCK_WAIT_SECONDS)
+            if not self.held:
+                _log(f"{self.where}: lock not free after {LOCK_WAIT_SECONDS:.0f} s, going ahead")
+        except Exception:
+            self.held = False
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        if self.held:
+            self.held = False
+            _lock.release()
+
+
+def _serialised(fn: Callable) -> Callable:
+    import functools
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        with _serial(fn.__name__):
+            return fn(*args, **kwargs)
+
+    return wrapper
+
+
 def _show_tip(msg: str, period: int = 6000) -> None:
     _ui(lambda: tooltip(msg, period=period))
 
@@ -83,8 +131,9 @@ def _show_tip(msg: str, period: int = 6000) -> None:
 def _fail_open(where: str) -> None:
     _log(f"error in {where}:\n{traceback.format_exc()}")
     try:
-        if engine is not None and mw.col is not None:
-            engine.disable_after_error()
+        with _serial("fail open"):
+            if engine is not None and mw.col is not None:
+                engine.disable_after_error()
     except Exception:
         _log(f"restore after error failed:\n{traceback.format_exc()}")
     _update_toolbar_label()
@@ -94,11 +143,12 @@ def _fail_open(where: str) -> None:
 
 def _guarded(fn: Callable) -> Callable:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            return fn(*args, **kwargs)
-        except Exception:
-            _fail_open(fn.__name__)
-            return None
+        with _serial(fn.__name__):
+            try:
+                return fn(*args, **kwargs)
+            except Exception:
+                _fail_open(fn.__name__)
+                return None
 
     wrapper.__name__ = fn.__name__
     return wrapper
@@ -307,15 +357,16 @@ def _suspend(why: str) -> None:
     global _suspended
     if _suspended:
         return
-    try:
-        if engine is not None and mw.col is not None and not unavailable:
-            engine.col = mw.col
-            engine.restore_all()
-            engine.clear_pause()
-            engine.save()
-    except Exception:
-        _log(f"restore before {why} failed:\n{traceback.format_exc()}")
-    _suspended = why
+    _suspended = why  # first: no entry point that starts from now on hides anything
+    with _serial(f"suspend ({why})"):  # and one already running finishes first
+        try:
+            if engine is not None and mw.col is not None and not unavailable:
+                engine.col = mw.col
+                engine.restore_all()
+                engine.clear_pause()
+                engine.save()
+        except Exception:
+            _log(f"restore before {why} failed:\n{traceback.format_exc()}")
     _log(f"suspended until Anki restarts: add-on {why}")
 
     def ui() -> None:
@@ -465,6 +516,7 @@ def on_state_will_change(new_state: str, old_state: str) -> None:
         _after_db_change()
 
 
+@_serialised
 def on_reviewer_will_answer_card(ease_tuple, reviewer, card):
     # Filter run in Reviewer._answerCard() before the answer op starts. If this
     # answer completes the batch, the next batch is un-hidden now, so nothing is
@@ -574,6 +626,7 @@ def _patch_reviewer_and_overview() -> None:
     _wrap(ov, "_show_finished_screen", finished)
 
 
+@_serialised
 def _overview_instead_of_congrats(show_congrats: Callable) -> Any:
     """Anki thinks the deck is finished, but a redo of the current batch is only
     waiting for its relearning step: show the normal overview (Study Now brings
@@ -623,16 +676,17 @@ def _unbury_safely(orig_unbury: Callable) -> Any:
     (the user's own and sibling burials), then hide ours again."""
     global _reapply_after_unbury
     try:
-        eng = _active()
-        if eng is not None:
-            eng.restore_all()
-            _after_db_change()
-            if not mw.col.sched.have_buried():
-                eng.ensure()
+        with _serial("unbury"):  # (released before Anki's choice dialog)
+            eng = _active()
+            if eng is not None:
+                eng.restore_all()
                 _after_db_change()
-                mw.overview.refresh()
-                return
-            _reapply_after_unbury = True
+                if not mw.col.sched.have_buried():
+                    eng.ensure()
+                    _after_db_change()
+                    mw.overview.refresh()
+                    return
+                _reapply_after_unbury = True
         out = orig_unbury()
         if _reapply_after_unbury and not mw._background_op_count:
             on_unbury_op_done()  # the user cancelled Anki's choice dialog
@@ -655,6 +709,7 @@ def on_unbury_op_done(*_args: Any) -> None:
             mw.overview.refresh()
 
 
+@_serialised
 def on_overview_will_render_bottom(link_handler, links):
     """Hide Anki's Unbury button when the only buried cards are ours."""
     try:
@@ -683,6 +738,7 @@ _paused_view = False
 PAUSE_TEXT = "Batch is done. Press Space or Enter to move to the next batch."
 
 
+@_serialised
 def _next_card(r, inner: Callable) -> Any:
     try:
         eng = _active()
@@ -1115,7 +1171,7 @@ def _register_hooks() -> None:
         add("webview_will_set_content", on_webview_will_set_content)
         add("webview_did_receive_js_message", on_js_message)
         # hook-independent second restore path before close / full-sync close / sync
-        wrapped = safety.install(lambda: engine, _log)
+        wrapped = safety.install(lambda: engine, _log, lambda: _serial("safety net"))
         _watch_disable()
         mw.addonManager.setConfigUpdatedAction(MODULE, on_config_updated)
     except Exception:

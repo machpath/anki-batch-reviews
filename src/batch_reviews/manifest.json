@@ -1,9 +1,9 @@
 {
  "package": "batch_reviews",
  "name": "Batch Reviews",
- "human_version": "1.1.2",
- "mod": 1794795554,
- "min_point_version": 260500,
+ "human_version": "1.2.0",
+ "mod": 1794852055,
+ "min_point_version": 250700,
  "max_point_version": 260904,
  "conflicts": []
 }

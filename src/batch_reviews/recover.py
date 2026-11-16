@@ -89,10 +89,16 @@ def _named_ids(base: str) -> tuple[set[int], set[int]]:
     return decks, cards
 
 
+REAL_ID_MIN = 10**12  # ids Anki makes from the clock (ms); the Default deck (1) is in every collection
+
+
 def _belongs(base: str, col: Any) -> bool:
-    """Does the state at `base` name decks or cards of this collection? (Deck and
-    card ids are creation timestamps, practically unique between collections.)"""
+    """Does the state at `base` name decks or cards of this collection? Only
+    clock-made ids count (practically unique between collections); the Default
+    deck's id 1, which every collection has, does not."""
     decks, cards = _named_ids(base)
+    decks = {i for i in decks if i >= REAL_ID_MIN}
+    cards = {i for i in cards if i >= REAL_ID_MIN}
     if decks and col.db.scalar(f"select count() from decks where id in {_ids(decks)}"):
         return True
     return bool(cards and col.db.scalar(f"select count() from cards where id in {_ids(cards)}"))
