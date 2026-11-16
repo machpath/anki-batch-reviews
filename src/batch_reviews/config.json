@@ -1,0 +1,4 @@
+{
+    "batch_size": 25,
+    "pause_between_batches": true
+}
